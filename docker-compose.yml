@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - ollama
+
+  frontend:
+    build: ./onye-reconciliation-engine
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./onye-reconciliation-engine/.env
+    depends_on:
+      - backend
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull llama3.2 && wait"]
+
+volumes:
+  ollama_data:
