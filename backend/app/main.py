@@ -177,68 +177,90 @@ def validate_data_quality(request: DataQualityRequest, api_key: str = Security(v
             bp_note = f"CRITICAL: Systolic BP is {systolic} which is physiologically impossible."
         elif systolic > 180:
             bp_note = f"HIGH: Systolic BP is {systolic} which is dangerously elevated."
+    
+    prompt = f"""You are a clinical data quality analyst. Analyze this patient record and return a quality score as JSON.
 
-    prompt = f"""You are a clinical data quality analyst. Analyze this patient record and score it.
+        Demographics: {json.dumps(demographics)}
+        Medications: {json.dumps(request.medications)}
+        Allergies: {json.dumps(request.allergies)}
+        Conditions: {json.dumps(request.conditions)}
+        Vital Signs: {json.dumps(vital_signs)}
+        Last Updated: {request.last_updated}
 
-    Demographics: {json.dumps(demographics)}
-    Medications: {json.dumps(request.medications)}
-    Allergies: {json.dumps(request.allergies)}
-    Conditions: {json.dumps(request.conditions)}
-    Vital Signs: {json.dumps(vital_signs)}
-    Last Updated: {request.last_updated}
+        ---
+        PRE-ANALYZED FINDINGS — treat these as confirmed facts, include all of them in issues_detected:
+        - Blood pressure: {bp_note if bp_note else "within normal range"}
+        - Allergies: {"EMPTY - flag as medium severity issue" if not request.allergies else "has entries"}
+        - Last updated: {request.last_updated} — {"flag as medium timeliness issue, data is stale" if request.last_updated < "2024-09-18" else "recent enough"}
 
-    Pre-analyzed findings (you MUST include these in issues_detected):
-    - Blood pressure: {bp_note if bp_note else "within normal range"}
-    - Allergies: {"EMPTY - flag as medium severity issue" if not request.allergies else "has entries"}
-    - Last updated: {request.last_updated} — {"flag as medium timeliness issue, data is stale" if request.last_updated < "2024-09-18" else "recent enough"}
+        FIELD PRESENCE:
+        - name: {"PRESENT" if demographics.get("name") else "MISSING"}
+        - dob: {"PRESENT" if demographics.get("dob") else "MISSING"}
+        - gender: {"PRESENT" if demographics.get("gender") else "MISSING"}
+        - allergies: {"PRESENT - has entries" if request.allergies else "MISSING or EMPTY"}
+        - medications: {"PRESENT" if request.medications else "MISSING"}
+        - conditions: {"PRESENT" if request.conditions else "MISSING"}
+        - vital_signs: {"PRESENT" if vital_signs else "MISSING"}
+        - last_updated: {"PRESENT" if request.last_updated else "MISSING"}
 
-    Current field status:
-    - name: {"PRESENT" if demographics.get("name") else "MISSING"}
-    - dob: {"PRESENT" if demographics.get("dob") else "MISSING"}
-    - gender: {"PRESENT" if demographics.get("gender") else "MISSING"}
-    - allergies: {"PRESENT - has entries" if request.allergies else "MISSING or EMPTY"}
-    - medications: {"PRESENT" if request.medications else "MISSING"}
-    - conditions: {"PRESENT" if request.conditions else "MISSING"}
-    - vital_signs: {"PRESENT" if vital_signs else "MISSING"}
-    - last_updated: {"PRESENT" if request.last_updated else "MISSING"}
+        ---
+        STEP-BY-STEP SCORING INSTRUCTIONS — follow exactly in this order:
 
-    Scoring rules — start every score at 100 and deduct:
-    - Each MISSING required field: -10 from completeness
-    - Each medium severity issue: -10 from overall and relevant breakdown score
-    - Each high severity issue: -20 from overall and relevant breakdown score
-    - Each critical severity issue: -30 from overall and clinical_plausibility
-    - Data older than 6 months: -10 from timeliness
-    - Data older than 12 months: -20 from timeliness
+        STEP 1 — Score each breakdown dimension starting at 100:
 
-    If there's any issues make sure to deduct points from the overall score AND the relevant breakdown score. For example, if blood pressure is critically implausible, deduct 30 points from overall and 30 points from clinical_plausibility.
-    Breakdown score meanings:
-    - completeness: are all required fields present and filled? (name, dob, gender, medications, conditions, vital_signs, last_updated, allergies)
-    - accuracy: are the values correct and not contradictory?
-    - timeliness: how recent is the data?
-    - clinical_plausibility: are the clinical values physiologically possible?
+        COMPLETENESS (start at 100):
+        - Deduct 30 for each MISSING required field (name, dob, gender, allergies, medications, conditions, vital_signs, last_updated)
+        - Deduct 10 for each EMPTY required field (present but no value, e.g. allergies list is empty)
+        - Floor at 0.
 
-    A record with a high severity issue should score below 70.
-    A record with a critical severity issue should NEVER score above 50.
+        ACCURACY (start at 100):
+        - Deduct 20 for each medium-severity data contradiction
+        - Deduct 30 for each high-severity contradiction
+        - Deduct 40 for each critical clinical implausibility (e.g. systolic BP of 300+, heart rate of 0, impossible lab values)
+        - Floor at 0.
 
-    Respond ONLY with this exact JSON, nothing else:
-    {{
-        "overall_score": 0 to 100,
-        "breakdown": {{
-            "completeness": 0 to 100,
-            "accuracy": 0 to 100,
-            "timeliness": 0 to 100,
-            "clinical_plausibility": 0 to 100
-        }},
-        "issues_detected": [
-            {{
-                "field": "field name",
-                "issue": "description of issue",
-                "severity": "low or medium or high or critical"
-            }}
-        ]
-    }}
+        TIMELINESS (start at 100):
+        - Deduct 10 if data is 6–12 months old
+        - Deduct 20 if data is older than 12 months
+        - Floor at 0.
 
-    Do NOT return any text outside the JSON. Do NOT use markdown. Return raw JSON only."""
+        CLINICAL_PLAUSIBILITY (start at 100):
+        - Deduct 10 for each medium-severity clinical issue
+        - Deduct 20 for each high-severity clinical issue
+        - Deduct 40 for each critical clinical issue (e.g. physiologically impossible vital sign)
+        - Floor at 0.
+
+        STEP 2 — Compute raw overall score:
+        overall = average of (completeness + accuracy + timeliness + clinical_plausibility)
+
+        STEP 3 — Apply issue-severity caps. These are HARD CEILINGS and override the calculated score:
+        - If ANY critical issue exists → overall_score MUST be 40 or below. No exceptions.
+        - If ANY high issue exists (and no critical) → overall_score MUST be 69 or below.
+        - If ONLY medium/low issues exist → overall_score may be up to 85.
+
+        STEP 4 — Apply the same caps to breakdown scores:
+        - clinical_plausibility MUST be 40 or below if a critical clinical issue exists.
+        - accuracy MUST be 40 or below if a critical accuracy/plausibility issue exists.
+
+        ---
+        OUTPUT FORMAT — respond ONLY with this exact JSON, no markdown, no extra text:
+        {{
+            "overall_score": <integer 0-100>,
+            "breakdown": {{
+                "completeness": <integer 0-100>,
+                "accuracy": <integer 0-100>,
+                "timeliness": <integer 0-100>,
+                "clinical_plausibility": <integer 0-100>
+            }},
+            "issues_detected": [
+                {{
+                    "field": "<field name>",
+                    "issue": "<description>",
+                    "severity": "<low|medium|high|critical>"
+                }}
+            ]
+        }}
+    """
 
     response = ollama_client.chat(
         model='llama3.2',
