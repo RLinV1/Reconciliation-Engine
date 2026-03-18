@@ -164,8 +164,6 @@ VITE_API_BASE_URL=http://localhost:8000
 VITE_API_KEY=your-secret-api-key-here
 ```
 
-> `host.docker.internal` lets the Docker container reach Ollama running on your host machine. This works on Mac and Windows Docker Desktop out of the box. On Linux, add `--add-host=host.docker.internal:host-gateway` to your Docker run command or docker-compose config.
-
 ### 4. Build and run with Docker Compose
 
 ```bash
