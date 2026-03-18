@@ -210,6 +210,7 @@ def validate_data_quality(request: DataQualityRequest, api_key: str = Security(v
     - Data older than 6 months: -10 from timeliness
     - Data older than 12 months: -20 from timeliness
 
+    If there's any issues make sure to deduct points from the overall score AND the relevant breakdown score. For example, if blood pressure is critically implausible, deduct 30 points from overall and 30 points from clinical_plausibility.
     Breakdown score meanings:
     - completeness: are all required fields present and filled? (name, dob, gender, medications, conditions, vital_signs, last_updated, allergies)
     - accuracy: are the values correct and not contradictory?
@@ -218,11 +219,6 @@ def validate_data_quality(request: DataQualityRequest, api_key: str = Security(v
 
     A record with a high severity issue should score below 70.
     A record with a critical severity issue should NEVER score above 50.
-
-    Example input/output for reference:
-    Input: allergies=[], blood_pressure="340/180", last_updated="2024-06-15"
-    Output scores: overall=62, completeness=60, accuracy=50, timeliness=70, clinical_plausibility=40
-    Issues: allergies(medium), vital_signs.blood_pressure(high), last_updated(medium)
 
     Respond ONLY with this exact JSON, nothing else:
     {{

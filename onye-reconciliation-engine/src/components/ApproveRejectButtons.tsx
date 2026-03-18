@@ -19,13 +19,13 @@ export default function ApproveRejectButtons({ status, onApprove, onReject }: Pr
     <div className="flex gap-3">
       <button
         onClick={onApprove}
-        className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors"
+        className="cursor-pointer flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors"
       >
         ✓ Approve
       </button>
       <button
         onClick={onReject}
-        className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors"
+        className="cursor-pointer flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors"
       >
         ✗ Reject
       </button>
