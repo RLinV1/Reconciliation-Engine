@@ -16,7 +16,6 @@ A full-stack application that uses AI to reconcile conflicting patient medicatio
 - [What I'd Improve With More Time](#what-id-improve-with-more-time)
 - [Estimated Time Spent](#estimated-time-spent)
 
----
 
 ## Overview
 
@@ -25,8 +24,11 @@ Healthcare providers often store conflicting information about the same patient 
 - **Reconcile** conflicting medication records from multiple sources into a single truth with a confidence level
 - **Validate** Validate patient data quality across dimensions like completeness, accuracy, timeliness, and plausability
 
-The frontend is deployed on Vercel for live preview. The backend is not publicly hosted due to the computational requirements of running a local LLM (Llama 3.2 via Ollama), which requires dedicated hardware resources that fall outside the scope of this assessment. To fully experience the application, the backend must be run locally by following the setup instructions below.
-https://reconciliation-engine-jade.vercel.app/
+
+The frontend is deployed on Vercel for live preview: https://reconciliation-engine-jade.vercel.app/
+
+The backend is not publicly hosted due to the computational requirements of running a local LLM (Llama 3.2 via Ollama), which requires dedicated hardware resources that fall outside the scope of this assessment. To fully experience the application with live AI responses, the backend must be run locally by following the setup instructions below.
+
 ---
 
 ## Tech Stack
