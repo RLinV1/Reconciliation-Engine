@@ -139,17 +139,7 @@ pytest tests/ -v
 
 ### 1. Pull the LLM model (on host machine)
 
-> Currently the Ollama is ran through docker desktop but this require at least 6 GB of RAM dedicated to your containers. You can also serve the ollama model on your computer without docker containers. This requires changing up the code 
-
-
-```bash
-ollama pull llama3.2
-ollama serve
-```
-
-
-> Ollama runs on the host, not inside Docker, to avoid downloading the model inside the container.
-
+> Currently the Ollama is ran through docker desktop but this require at least 6 GB of RAM dedicated to your containers. You can also serve the ollama model on your computer with the backend and frontend served as containers.  
 
 ### 2. Clone the repository
 
@@ -160,11 +150,14 @@ cd ehr-reconciliation-engine
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the backend:
 
 ```env
 API_KEY=your-secret-api-key-here
 OLLAMA_BASE_URL=http://ollama:11434
+```
+Create an `.env` file in the onye-reconciliation-engine
+```env
 VITE_API_BASE_URL=http://localhost:8000
 VITE_API_KEY=your-secret-api-key-here
 ```
